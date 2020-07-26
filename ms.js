@@ -5,12 +5,15 @@ const openFactory = (result) => (row, column) => {
   if (m[row][column].value === 'x') return 'open a mine, Booom!';
   else return m[row][column].value;
 };
-const result = `1 x 1 1 x 1
-2 2 2 1 2 2
-2 x 2 0 1 x
-2 x 2 1 2 2
-1 1 1 1 x 1
-0 0 0 1 1 1`;
+const result = `1 x x 1 0 0 0
+2 3 3 1 0 1 1
+1 x 1 0 0 1 x
+1 1 1 0 0 1 1
+0 1 1 1 0 0 0
+0 1 x 1 0 0 0
+0 1 1 1 0 1 1
+0 0 0 0 0 1 x
+0 0 0 0 0 1 1`;
 
 const open = openFactory(result);
 
@@ -50,8 +53,8 @@ const printMap = (m) => {
     .join(`\n`);
 };
 
-const getSurroundingCellRefs = (row, col, height, width) => {
-  return [
+const getSurroundingCellRefs = (row, col, width, height) => {
+  const cellRefs = [
     [1, 0],
     [1, 1],
     [0, 1],
@@ -63,8 +66,9 @@ const getSurroundingCellRefs = (row, col, height, width) => {
   ]
     .map(([x, y]) => [row + x, col + y])
     .filter(([x, y]) => {
-      return x >= 0 && y >= 0 && x < width && y < height;
+      return x >= 0 && y >= 0 && x < height && y < width;
     });
+  return cellRefs;
 };
 
 const doesBoardHaveZeros = (m) =>
@@ -76,7 +80,7 @@ const handleZeros = (m) => {
       row.forEach((cell, colIndex) => {
         if (cell.value === '0') {
           m[rowIndex][colIndex].value = '.';
-          getSurroundingCellRefs(rowIndex, colIndex, m.height, m.width)
+          getSurroundingCellRefs(rowIndex, colIndex, m.width, m.height)
             // filter out cells that are alrady solved
             .filter(([row, col]) => m[row][col].value !== '.')
             .forEach((cell) => openCell(m, ...cell));
@@ -101,7 +105,7 @@ const isCellPossibleSolvable = (m, row, col) => {
   return false;
 };
 
-markSolvables = (m) => {
+markPoentialSolvables = (m) => {
   m.forEach((row, rowIndex) => {
     row.forEach((cell, colIndex) => {
       if (isCellPossibleSolvable(m, rowIndex, colIndex)) {
@@ -111,24 +115,72 @@ markSolvables = (m) => {
   });
 };
 
+const getAdjacentConstraints = (m, coords) => {
+  const constraints = getSurroundingCellRefs(...coords, m.width, m.height);
+};
+
+getPotentialSolveableRefs = (m) => {
+  return m.reduce((outerAcc, row, rowIndex) => {
+    outerAcc.push(
+      ...row.reduce((innerAcc, cell, colIndex) => {
+        if (cell.solvable) {
+          const coords = [rowIndex, colIndex];
+          const constraints = getAdjacentConstraints(m, coords);
+          innerAcc.push({ coords });
+        }
+        return innerAcc;
+      }, [])
+    );
+    return outerAcc;
+  }, []);
+};
+
+const generateBinaryStrings = (length, totalOnesAllowed) => {
+  const output = [];
+  const recurse = (length, str = '') => {
+    if (str.length >= length) {
+      let count = 0;
+      for (let i = 0; i < str.length; i += 1) {
+        if (str[i] === '1') count += 1;
+      }
+      if (count <= totalOnesAllowed) output.push(str);
+      return;
+    }
+    recurse(length, str + '0');
+    recurse(length, str + '1');
+  };
+  recurse(length);
+  return output;
+};
+
+const binary = generateBinaryStrings(10, 8);
+console.log('binary: ', binary);
+
 const solveMine = (map, n) => {
   // initialization
   const m = parseMap(map, n);
 
   handleZeros(m);
 
-  markSolvables(m);
+  openCell(m, 0, 0);
+
+  markPoentialSolvables(m);
+
+  const solvables = getPotentialSolveableRefs(m);
 
   return printMap(m);
 };
 
 // TESTS
-const map = `? ? ? ? ? ?
-? ? ? ? ? ?
-? ? ? 0 ? ?
-? ? ? ? ? ?
-? ? ? ? ? ?
-0 0 0 ? ? ?`;
+const map = `? ? ? ? 0 0 0
+? ? ? ? 0 ? ?
+? ? ? 0 0 ? ?
+? ? ? 0 0 ? ?
+0 ? ? ? 0 0 0
+0 ? ? ? 0 0 0
+0 ? ? ? 0 ? ?
+0 0 0 0 0 ? ?
+0 0 0 0 0 ? ?`;
 
 const output = solveMine(map, 6);
 console.log(`output\n${output}`);
