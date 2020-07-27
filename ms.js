@@ -45,7 +45,7 @@ const printMap = (m) => {
     .map((row) =>
       row
         .map((cell) => {
-          if (cell.solvable) return chalk.bgBlue.black(cell.value);
+          if (cell.hypothesis) return chalk.bgBlue.black(cell.hypothesis);
           return cell.value;
         })
         .join(' ')
@@ -115,18 +115,13 @@ markPoentialSolvables = (m) => {
   });
 };
 
-const getAdjacentConstraints = (m, coords) => {
-  const constraints = getSurroundingCellRefs(...coords, m.width, m.height);
-};
-
 getPotentialSolveableRefs = (m) => {
   return m.reduce((outerAcc, row, rowIndex) => {
     outerAcc.push(
       ...row.reduce((innerAcc, cell, colIndex) => {
         if (cell.solvable) {
           const coords = [rowIndex, colIndex];
-          const constraints = getAdjacentConstraints(m, coords);
-          innerAcc.push({ coords });
+          innerAcc.push(coords);
         }
         return innerAcc;
       }, [])
@@ -141,20 +136,107 @@ const generateBinaryStrings = (length, totalOnesAllowed) => {
     if (str.length >= length) {
       let count = 0;
       for (let i = 0; i < str.length; i += 1) {
-        if (str[i] === '1') count += 1;
+        if (str[i] === 'x') count += 1;
       }
       if (count <= totalOnesAllowed) output.push(str);
       return;
     }
-    recurse(length, str + '0');
-    recurse(length, str + '1');
+    recurse(length, str + '-');
+    recurse(length, str + 'x');
   };
   recurse(length);
   return output;
 };
 
-const binary = generateBinaryStrings(10, 8);
-console.log('binary: ', binary);
+const resetHypotheses = (m) => {
+  m.forEach((row) => {
+    row.forEach((col) => {
+      if (col.hypothesis) delete col.hypothesis;
+      if (col.solvable) delete col.solvable;
+    });
+  });
+};
+
+const testClue = (m, [r, c]) => {
+  const mineCount = getSurroundingCellRefs(r, c, m.width, m.height).reduce(
+    (count, [r, c]) => {
+      if (m[r][c].hasOwnProperty('hypothesis') && m[r][c].hypothesis === 'x')
+        count += 1;
+      else if (m[r][c].value === 'x') count += 1;
+      return count;
+    },
+    0
+  );
+
+  const clue = parseInt(m[r][c].value);
+  if (mineCount > clue) {
+    return 'greater';
+  }
+  if (mineCount < clue) {
+    return 'less';
+  }
+  return 'equal';
+};
+
+const getClueRefs = (m) => {
+  const clueRefs = [];
+  m.forEach((row, rowIndex) => {
+    row.forEach((cell, colIndex) => {
+      if (!isNaN(parseInt(cell.value))) {
+        clueRefs.push([rowIndex, colIndex]);
+      }
+    });
+  });
+  return clueRefs;
+};
+
+const testHypothesis = (m) => {
+  const clueRefs = getClueRefs(m);
+  return clueRefs.every((clueRef) => {
+    const result = testClue(m, clueRef);
+    return result === 'less' || result === 'equal';
+  });
+};
+
+const inferFromPermutations = (validPerms) => {
+  console.log('validPerms: ', validPerms);
+  const stringLength = validPerms[0].length;
+  const output = Array.from({ length: stringLength });
+
+  for (let i = 0; i < stringLength; i += 1) {
+    const allX = validPerms.every((perm) => {
+      return perm[i] === 'x';
+    });
+    const allDash = validPerms.every((perm) => {
+      return perm[i] === '-';
+    });
+    console.log('allDash: ', allDash);
+    console.log('allX: ', allX);
+    if (allX || allDash) {
+      output[i] = validPerms[0][i];
+    }
+  }
+
+  console.log('output: ', output);
+};
+
+const permutateAllSolvables = (m) => {
+  const solvables = getPotentialSolveableRefs(m);
+  const permutations = generateBinaryStrings(solvables.length, m.n);
+  const validPerms = permutations.filter((permutation) => {
+    // plug in hypothesis
+    permutation.split('').forEach((permCell, permIndex) => {
+      const [row, col] = solvables[permIndex];
+      m[row][col].hypothesis = permCell;
+    });
+
+    // test hypothesis
+    const testResult = testHypothesis(m);
+    // console.log(`testing ${permutation} ; result ${testResult}`);
+    return testResult;
+  });
+  inferFromPermutations(validPerms);
+};
 
 const solveMine = (map, n) => {
   // initialization
@@ -162,11 +244,9 @@ const solveMine = (map, n) => {
 
   handleZeros(m);
 
-  openCell(m, 0, 0);
-
   markPoentialSolvables(m);
 
-  const solvables = getPotentialSolveableRefs(m);
+  permutateAllSolvables(m);
 
   return printMap(m);
 };
