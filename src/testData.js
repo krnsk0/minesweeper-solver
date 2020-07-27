@@ -91,4 +91,4 @@ const test5 = {
   solvable: true,
 };
 
-module.exports = { test1, test2, test3, test4 };
+module.exports = { test1, test2, test3, test4, test5 };
