@@ -1,20 +1,15 @@
-const isClue = (s) => ['0', '1', '2', '3', '4', '5', '6', '7', '8'].includes(s);
+const isValid = (s) =>
+  ['?', '0', '1', '2', '3', '4', '5', '6', '7', '8'].includes(s);
 
 const parseMap = (map, n) => {
   const m = map.split(`\n`).map((row) =>
-    row.split(` `).map((value) => {
-      const isAClue = isClue(value);
-      return {
-        // the original string value from map
-        value,
-        // is solved already? boolean
-        solved: false,
-        // boolean - is this a clue?
-        isClue: isAClue,
-        // the value as a number if it's a clue, else false
-        clueValue: isAClue ? parseInt(value) : false,
-      };
-    })
+    row
+      .split(` `)
+      .filter(isValid)
+      .map((value) => {
+        const output = value === '?' ? value : parseInt(value);
+        return output;
+      })
   );
   // store the number of mines remaining
   if (n) m.n = n;

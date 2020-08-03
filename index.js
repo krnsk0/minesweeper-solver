@@ -1,18 +1,17 @@
 const { initializeOpen } = require('./src/open');
 const { parseMap } = require('./src/parseMap');
 const { printMap } = require('./src/printMap');
-const { handleZeros } = require('./src/handleZeros');
-const testData = require('./src/testData');
+const { propagateZeros } = require('./src/propagateZeros');
+const testData = require('./testData');
 
-const ACTIVE_TEST = 'test3';
+const ACTIVE_TEST = 'test5';
 const { map, result, mines, solvable } = testData[ACTIVE_TEST];
 initializeOpen(result);
 
 const solveMine = (map, n) => {
   const m = parseMap(map, n);
-  console.log('parsed:\n', printMap(m));
 
-  handleZeros(m);
+  propagateZeros(m);
 
   return printMap(m);
 };

@@ -5,10 +5,13 @@ const printMap = (m) => {
     .map((row) =>
       row
         .map((cell) => {
-          if (cell.solved) {
-            return chalk.green(cell.value);
+          if (cell === '.') {
+            return chalk.green(cell);
           }
-          return cell.value;
+          if (typeof cell === 'number') {
+            return chalk.bgGreen.black(cell);
+          }
+          return cell;
         })
         .join(' ')
     )
